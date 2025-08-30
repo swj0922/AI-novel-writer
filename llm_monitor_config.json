@@ -1,0 +1,18 @@
+{
+  "llm_monitoring": {
+    "enabled": true,
+    "log_detailed_response": false
+  },
+  "database": {
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "",
+    "database": "novel_generator",
+    "charset": "utf8mb4"
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "llm_monitor.log"
+  }
+}
