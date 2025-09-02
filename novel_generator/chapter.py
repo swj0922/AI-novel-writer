@@ -14,6 +14,7 @@ from prompt_definitions import (
 from chapter_directory_parser import get_chapter_info_from_blueprint
 from novel_generator.common import invoke_with_cleaning
 from utils import read_file, clear_file_content, save_string_to_txt
+import re
 
 
 def get_last_n_chapters_text(chapters_dir: str, current_chapter_num: int, n: int = 1) -> list:
@@ -30,6 +31,84 @@ def get_last_n_chapters_text(chapters_dir: str, current_chapter_num: int, n: int
         else:
             texts.append("")
     return texts
+
+def extract_chapters_directory(filepath: str, current_chapter_num: int, extract_count: int) -> str:
+    """
+    从Novel_directory.txt中提取指定范围的章节目录信息。
+    
+    Args:
+        filepath: Novel_Output目录路径
+        current_chapter_num: 当前正在创作的章节数
+        extract_count: 想要提取的章节数量
+        
+    Returns:
+        提取的章节目录信息字符串
+        
+    Example:
+        如果current_chapter_num=20, extract_count=10
+        则提取第9到第19章的章节目录
+    """
+    try:
+        directory_file = os.path.join(filepath, "Novel_directory.txt")
+        if not os.path.exists(directory_file):
+            logging.warning(f"章节目录文件不存在: {directory_file}")
+            return ""
+            
+        directory_content = read_file(directory_file)
+        if not directory_content:
+            logging.warning("章节目录文件为空")
+            return ""
+            
+        # 计算要提取的章节范围
+        start_chapter = max(1, current_chapter_num - extract_count)
+        end_chapter = current_chapter_num - 1  # 不包括当前章节
+        
+        if start_chapter > end_chapter:
+            logging.warning(f"无有效章节可提取: start={start_chapter}, end={end_chapter}")
+            return ""
+            
+        extracted_chapters = []
+        
+        # 使用正则表达式匹配章节信息
+        chapter_pattern = r'第(\d+)章\s*-\s*([^\n]+)\n本章定位：([^\n]+)\n核心作用：([^\n]+)\n悬念密度：([^\n]+)\n衔接要素：([^\n]+)\n本章简述：([^\n]+(?:\n(?!第\d+章)[^\n]+)*)'
+        
+        matches = re.finditer(chapter_pattern, directory_content)
+        
+        for match in matches:
+            chapter_num = int(match.group(1))
+            if start_chapter <= chapter_num <= end_chapter:
+                chapter_title = match.group(2).strip()
+                chapter_role = match.group(3).strip()
+                chapter_purpose = match.group(4).strip()
+                suspense_level = match.group(5).strip()
+                connection_elements = match.group(6).strip()
+                chapter_summary = match.group(7).strip()
+                
+                # 格式化章节信息
+                chapter_info = f"""第{chapter_num}章 - {chapter_title}
+本章定位：{chapter_role}
+核心作用：{chapter_purpose}
+悬念密度：{suspense_level}
+衔接要素：{connection_elements}
+本章简述：{chapter_summary}"""
+                
+                extracted_chapters.append(chapter_info)
+                
+        if not extracted_chapters:
+            logging.warning(f"未找到第{start_chapter}到第{end_chapter}章的目录信息")
+            return ""
+            
+        # 按章节编号排序（虽然正则匹配通常已经是有序的）
+        extracted_chapters.sort(key=lambda x: int(re.search(r'第(\d+)章', x).group(1)))
+        
+        result = "\n\n".join(extracted_chapters)
+        logging.info(f"成功提取第{start_chapter}到第{end_chapter}章的目录信息，共{len(extracted_chapters)}章")
+        
+        return result
+        
+    except Exception as e:
+        logging.error(f"提取章节目录时发生错误: {str(e)}")
+        return ""
 
 def summarize_recent_chapters(
     interface_format: str,
@@ -53,7 +132,9 @@ def summarize_recent_chapters(
         combined_text = "\n".join(chapters_text_list).strip()
         if not combined_text:
             return ""
-            
+        
+        recent_dir = extract_chapters_directory(filepath='./Novel_Output', current_chapter_num=novel_number, extract_count=10)
+
         llm_adapter = create_llm_adapter(
             interface_format=interface_format,
             base_url=base_url,
@@ -70,6 +151,7 @@ def summarize_recent_chapters(
         
         prompt = summarize_recent_chapters_prompt.format(
             combined_text=combined_text,  # 最近一章完整内容
+            recent_dir=recent_dir,        # 最近十章章节信息
             novel_number=novel_number,
             chapter_title=chapter_info.get("chapter_title", "未命名"),
             chapter_role=chapter_info.get("chapter_role", "常规章节"),

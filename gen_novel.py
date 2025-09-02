@@ -53,25 +53,33 @@ async def main():
 
     # ==================== 配置参数 ====================
     interface_format = 'gemini'
-    api_key ="AIzaSyD36taFUaT7sv0iKwzLyuFeqZiZPoQtSnA"
+    api_key ="AIzaSyD36taFUaT7sv0iKwzLyuFeqZiZPoQtSnA" # 自己的
+    # api_key = "AIzaSyBCaevYiLbu8kE5VdPYZA8w8mUCWX9zwZA"  # 购买1
+    # api_key = "AIzaSyB-AwMVI5PYGihROiUME3DOz7_lkk0Tovw"  # 购买2
+
     base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    model_name1 = "gemini-2.5-flash"   # 小说架构，更新角色和总结角色
-    model_name2 = "gemini-2.5-pro"   # 章节目录和章节正文
+    model_name1 = "gemini-2.5-flash"   # 更新角色和总结角色
+    model_name2 = "gemini-2.5-pro"   # 小说架构，章节目录和章节正文
     
 
     # 生成参数
-    temperature1 = 0.6     # 小说架构和章节内容
-    temperature2 = 0.2     # 章节目录、更新角色状态和总结角色状态
-    max_tokens = 65536     # gemini最大输出token
+    temperature1 = 0.7     # 小说架构和章节内容
+    temperature2 = 0.1     # 章节目录、更新角色状态和总结角色状态
+    temperature3 = 1.3     # 单独控制小说剧情
+    max_tokens = 65536            # gemini最大输出token
     timeout = 600
 
 
     # 小说基本设置
-    topic = "穷屌丝在与一众高富帅的竞争中脱颖而出，逆袭迎娶白富美的爽文故事"
+    # topic = "穷屌丝在与一众高富帅的竞争中脱颖而出，逆袭迎娶白富美的爽文故事"
+    # topic = "女主曾是家境优渥的千金，却因家族企业破产而跌入谷底。她不得不从零开始，进入职场，与男主，一位曾经被她看不起的普通职员，再次相遇。男主默默帮助她，女主也凭借自己的努力和智慧，一步步重振家族。"
+    topic = "出身贫寒但才华横溢的男主角，在追求集美貌、财富、智慧于一身的女主角过程中，需要与多个背景显赫的高富帅竞争者一较高下。男主凭借独特的人格魅力、过人的智慧、不屈的毅力和真挚的情感，在看似不可能的悬殊竞争中逐步证明自己。女主角初期被外在条件蒙蔽，逐渐发现真正的爱情不在于物质匹配，而在于心灵契合与品格高尚。"
     genre = "都市言情"
-    number_of_chapters = 100  # 总章节数
-    word_number = 1100 # 每章字数（小说要求每章至少1100字）
-    
+    number_of_chapters = 100       # 总章节数
+    word_number = 1200             # 每章字数（小说要求每章至少1200字）
+    chunk_size = 50                # 章节目录生成时，每次生成多少章节
+    limit_chapters = 50            # 每次生成章节时，提供多少章已经生成好的章节信息
+
     # 用户指导（可选）
     user_guidance = "故事情节要丰富，循序渐进地推进剧情。叙述手法多样化。人物的背景不要一开始就全盘托出，而是要随着剧情的展开逐步揭示。在剧情需要时，可以加入新的角色。"
     
@@ -88,14 +96,13 @@ async def main():
     os.makedirs(filepath, exist_ok=True)
     
     try:
-        '''
         # 第一步：生成小说架构
         print("\n📋 第一步：生成小说架构...")
         Novel_architecture_generate(
             interface_format=interface_format,
             api_key=api_key,
             base_url=base_url,
-            llm_model=model_name1,
+            llm_model=model_name2,
             topic=topic,
             genre=genre,
             number_of_chapters=number_of_chapters,
@@ -103,11 +110,14 @@ async def main():
             filepath=filepath,
             user_guidance=user_guidance,
             temperature=temperature1,
+            temperature_plot=temperature3,
             max_tokens=max_tokens,
             timeout=timeout
         )
         print("✅ 小说架构生成完成！")
-        
+        import sys
+        sys.exit(1)
+
         # 第二步：生成章节蓝图
         print("\n📖 第二步：生成章节蓝图...")
         Chapter_blueprint_generate(
@@ -119,13 +129,15 @@ async def main():
             number_of_chapters=number_of_chapters,
             temperature=temperature2,
             max_tokens=max_tokens,
+            chunk_size=chunk_size,
+            limit_chapters=limit_chapters,
             timeout=timeout
         )
         print("✅ 章节蓝图生成完成！")
-        ''' 
+
         # 第三步：逐章生成内容
         print("\n✍️ 第三步：开始生成章节内容...")
-        for chapter_num in range(41, number_of_chapters + 1):
+        for chapter_num in range(21, number_of_chapters + 1):
             print(f"\n--- 正在生成第 {chapter_num} 章 ---")
 
             # 生成章节草稿
@@ -205,7 +217,7 @@ async def main():
             else:
                 print(f"❌ 第 {chapter_num} 章生成失败！")
                 break
-              
+
 
         print("\n" + "=" * 60)
         print("🎉 小说生成完成！")

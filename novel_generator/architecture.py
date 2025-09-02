@@ -10,7 +10,7 @@ from llm_adapters import create_llm_adapter
 from prompts.character_dynamics_prompt import character_dynamics_prompt
 from prompts.world_building_prompt import world_building_prompt
 from prompts.plot_architecture_prompt import plot_architecture_prompt
-from prompt_definitions import create_character_state_prompt
+from prompt_definitions import create_character_state_prompt, reverse_plot_prompt
 from utils import clear_file_content, save_string_to_txt
 
 
@@ -26,6 +26,7 @@ def Novel_architecture_generate(
     filepath: str,
     user_guidance: str = "",  
     temperature: float = 0.8,
+    temperature_plot: float = 1.3,
     max_tokens: int = 1000000,
     timeout: int = 600
 ) -> None:
@@ -113,16 +114,25 @@ def Novel_architecture_generate(
             world_building_result = f.read().strip()
         
     # Step3: 情节架构
+    plot_llm_adapter = create_llm_adapter(
+        interface_format=interface_format,
+        base_url=base_url,
+        model_name=llm_model,
+        api_key=api_key,
+        temperature=temperature_plot,
+        max_tokens=max_tokens,
+        timeout=timeout
+    )
+
     plot_file = os.path.join(filepath, "plot.txt")
     if not os.path.exists(plot_file):
         logging.info("Step3: 开始生成情节架构...")
         prompt_plot = plot_architecture_prompt.format(
             topic=topic.strip(),
             character_dynamics=character_dynamics_result.strip(),
-            world_building=world_building_result.strip(),
-            user_guidance=user_guidance  
+            world_building=world_building_result.strip() 
         )
-        plot_arch_result = invoke_with_cleaning(llm_adapter, prompt_plot, purpose="生成情节架构")
+        plot_arch_result = invoke_with_cleaning(plot_llm_adapter, prompt_plot, purpose="生成情节架构")
         if not plot_arch_result.strip():
             logging.warning("情节架构生成失败")
             return
@@ -134,6 +144,14 @@ def Novel_architecture_generate(
         with open(world_building_file, "r", encoding="utf-8") as f:
             plot_arch_result = f.read().strip()
 
+    '''
+    # Step4： 为情节添加反转元素
+    reverse_prompt = reverse_plot_prompt.format(
+        plot=plot_arch_result.strip(),
+    )
+    reverse_plot = invoke_with_cleaning(llm_adapter, prompt=reverse_prompt, purpose="添加反转元素")
+    save_string_to_txt(reverse_plot, plot_file)
+    '''
 
     final_content = (
         "#=== 0) 小说设定 ===\n"
