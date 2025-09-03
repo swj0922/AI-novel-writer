@@ -10,7 +10,7 @@ def parse_chapter_blueprint(blueprint_text: str):
       "chapter_title": str,
       "chapter_role": str,       # 本章定位
       "chapter_purpose": str,    # 核心作用
-      "suspense_level": str,     # 悬念密度
+      "suspense_level": str,     # 章节类型
       "connection_elements": str, # 衔接要素
       "chapter_summary": str     # 本章简述
     }
@@ -29,7 +29,7 @@ def parse_chapter_blueprint(blueprint_text: str):
 
     role_pattern     = re.compile(r'^本章定位：\s*\[?(.*)\]?$')
     purpose_pattern  = re.compile(r'^核心作用：\s*\[?(.*)\]?$')
-    suspense_pattern = re.compile(r'^悬念密度：\s*\[?(.*)\]?$')
+    suspense_pattern = re.compile(r'^章节类型：\s*\[?(.*)\]?$')
     connection_pattern = re.compile(r'^衔接要素：\s*\[?(.*)\]?$')
     summary_pattern = re.compile(r'^本章简述：\s*\[?(.*)\]?$')
 
@@ -119,7 +119,7 @@ def get_chapter_info_from_blueprint(blueprint_text: str, target_chapter_number: 
         "chapter_role": "",
         # 对应Novel_directory.txt中的核心作用
         "chapter_purpose": "",
-        # 对应Novel_directory.txt中的悬念密度
+        # 对应Novel_directory.txt中的章节类型
         "suspense_level": "",
         # 对应Novel_directory.txt中的衔接要素
         "connection_elements": "",

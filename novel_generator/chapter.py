@@ -70,7 +70,7 @@ def extract_chapters_directory(filepath: str, current_chapter_num: int, extract_
         extracted_chapters = []
         
         # 使用正则表达式匹配章节信息
-        chapter_pattern = r'第(\d+)章\s*-\s*([^\n]+)\n本章定位：([^\n]+)\n核心作用：([^\n]+)\n悬念密度：([^\n]+)\n衔接要素：([^\n]+)\n本章简述：([^\n]+(?:\n(?!第\d+章)[^\n]+)*)'
+        chapter_pattern = r'第(\d+)章\s*-\s*([^\n]+)\n本章定位：([^\n]+)\n核心作用：([^\n]+)\n章节类型：([^\n]+)\n衔接要素：([^\n]+)\n本章简述：([^\n]+(?:\n(?!第\d+章)[^\n]+)*)'
         
         matches = re.finditer(chapter_pattern, directory_content)
         
@@ -88,7 +88,7 @@ def extract_chapters_directory(filepath: str, current_chapter_num: int, extract_
                 chapter_info = f"""第{chapter_num}章 - {chapter_title}
 本章定位：{chapter_role}
 核心作用：{chapter_purpose}
-悬念密度：{suspense_level}
+章节类型：{suspense_level}
 衔接要素：{connection_elements}
 本章简述：{chapter_summary}"""
                 
@@ -208,7 +208,7 @@ def format_chapter_info(chapter_info: dict) -> str:
 章节标题：《{title}》
 章节定位：{role}
 核心作用：{purpose}
-悬念密度：{suspense}
+章节类型：{suspense}
 章节简述：{summary}
 """
     return template.format(
@@ -216,7 +216,7 @@ def format_chapter_info(chapter_info: dict) -> str:
         title=chapter_info.get('chapter_title', '未知'),
         role=chapter_info.get('chapter_role', '未知'),
         purpose=chapter_info.get('chapter_purpose', '未知'),
-        suspense=chapter_info.get('suspense_level', '一般'),
+        suspense=chapter_info.get('suspense_level', '日常'),
         summary=chapter_info.get('chapter_summary', '未提供')
     )
 

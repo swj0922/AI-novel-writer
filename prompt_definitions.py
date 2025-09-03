@@ -19,14 +19,14 @@ summarize_recent_chapters_prompt = """\
 第{novel_number}章《{chapter_title}》：
 ├── 本章定位：{chapter_role}
 ├── 核心作用：{chapter_purpose}
-├── 悬念密度：{suspense_level}
+├── 章节类型：{suspense_level}
 └── 本章简述：{chapter_summary}
 
 下一章信息：
 第{next_chapter_number}章《{next_chapter_title}》：
 ├── 本章定位：{next_chapter_role}
 ├── 核心作用：{next_chapter_purpose}
-├── 悬念密度：{next_chapter_suspense_level}
+├── 章节类型：{next_chapter_suspense_level}
 └── 本章简述：{next_chapter_summary}
 
 当前章节摘要生成规则：
@@ -201,19 +201,19 @@ chapter_blueprint_prompt = """\
 第n章 - [标题]
 本章定位：[角色/事件/主题/...]
 核心作用：[铺垫/推进/转折/揭示/...]
-悬念密度：[平缓/紧凑/渐进/爆发/...]
-衔接要素：[承接前章的XXX/为下章XXX做铺垫]
-本章简述：[简短概括]
+章节类型：[主线/支线/日常/...]
+衔接要素：[承接前章的XXX/为后续章节XXX做铺垫]
+本章简述：[精准概括]
 
 第n+1章 - [标题]
 本章定位：[角色/事件/主题/...]
 核心作用：[铺垫/推进/转折/揭示/...]
-悬念密度：[平缓/紧凑/渐进/爆发/...]
-衔接要素：[承接前章的XXX/为下章XXX做铺垫]
-本章简述：[简短概括]
+章节类型：[主线/支线/日常/...]
+衔接要素：[承接前章的XXX/为后续章节XXX做铺垫]
+本章简述：[精准概括]
 
 要求：
-- 使用精炼语言描述，每章字数控制在150字以内。
+- 使用精炼语言描述，每章字数控制在200字以内。
 - 合理安排节奏，确保整体悬念曲线的连贯性。
 - 章节之间连贯过渡，避免突兀。
 - 章节之间的内容不要有大量重复或相似内容。
@@ -249,14 +249,14 @@ chunked_chapter_blueprint_prompt = """\
 第n章 - [标题]
 本章定位：[角色/事件/主题/...]
 核心作用：[推进/转折/揭示/...]
-悬念密度：[紧凑/渐进/爆发/...]
+章节类型：[主线/支线/日常/...]
 衔接要素：[承接前章的XXX/为下章XXX做铺垫]
 本章简述：[简短而精确地概括]
 
 第n+1章 - [标题]
 本章定位：[角色/事件/主题/...]
 核心作用：[推进/转折/揭示/...]
-悬念密度：[紧凑/渐进/爆发/...]
+章节类型：[主线/支线/日常/...]
 衔接要素：[承接前章的XXX/为下章XXX做铺垫]
 本章简述：[简短而精确地概括]
 
@@ -357,7 +357,7 @@ first_chapter_draft_prompt = """\
 第 {novel_number} 章《{chapter_title}》：
 - 本章定位：{chapter_role}
 - 核心作用：{chapter_purpose}
-- 悬念密度：{suspense_level}
+- 章节类型：{suspense_level}
 - 衔接要素：{connection_elements}
 - 本章简述：{chapter_summary}
 
@@ -369,7 +369,7 @@ first_chapter_draft_prompt = """\
 第{next_chapter_number}章《{next_chapter_title}》：
 - 章节定位：{next_chapter_role}
 - 核心作用：{next_chapter_purpose}
-- 悬念密度：{next_chapter_suspense_level}
+- 章节类型：{next_chapter_suspense_level}
 - 衔接要素：{next_connection_elements}
 - 章节简述：{next_chapter_summary}
 
@@ -407,7 +407,7 @@ next_chapter_draft_prompt = """\
 第{novel_number}章《{chapter_title}》：
 ├── 章节定位：{chapter_role}
 ├── 核心作用：{chapter_purpose}
-├── 悬念密度：{suspense_level}
+├── 章节类型：{suspense_level}
 ├── 章节简述：{chapter_summary}
 └── 字数要求：{word_number}字
 
@@ -415,7 +415,7 @@ next_chapter_draft_prompt = """\
 第{next_chapter_number}章《{next_chapter_title}》：
 ├── 章节定位：{next_chapter_role}
 ├── 核心作用：{next_chapter_purpose}
-├── 悬念密度：{next_chapter_suspense_level}
+├── 章节类型：{next_chapter_suspense_level}
 └── 章节简述：{next_chapter_summary}
 
 内容生成严格遵循：
@@ -445,7 +445,7 @@ next_chapter_draft_prompt = """\
 第{novel_number}章《{chapter_title}》：
 - 章节定位：{chapter_role}
 - 核心作用：{chapter_purpose}
-- 悬念密度：{suspense_level}
+- 章节类型：{suspense_level}
 - 衔接要素：{connection_elements}
 - 章节简述：{chapter_summary}
 - 字数要求：{word_number}字
@@ -454,7 +454,7 @@ next_chapter_draft_prompt = """\
 第{next_chapter_number}章《{next_chapter_title}》：
 - 章节定位：{next_chapter_role}
 - 核心作用：{next_chapter_purpose}
-- 悬念密度：{next_chapter_suspense_level}
+- 章节类型：{next_chapter_suspense_level}
 - 衔接要素：{next_connection_elements}
 - 章节简述：{next_chapter_summary}
 

@@ -1,4 +1,4 @@
-character_dynamics_prompt = """
+'''
 你是一名专业的作家，正在为都市言情题材的小说设计角色。
 
  - 小说核心剧情：{topic}
@@ -66,10 +66,10 @@ character_dynamics_prompt = """
 ...（以此类推）
 
 仅给出最终文本，不要解释任何内容，不要使用markdown格式。
-"""
 '''
 
-character_dynamics_prompt = """```
+
+character_dynamics_prompt = """
 你是一名专业的作家，正在为一部言情小说设计角色。
 
 - 小说核心剧情：{topic}
@@ -103,4 +103,3 @@ character_dynamics_prompt = """```
 
 仅给出最终文本，不要解释任何内容。不要使用markdown格式。
 """
-'''
