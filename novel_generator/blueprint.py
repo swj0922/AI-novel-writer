@@ -8,8 +8,88 @@ import re
 import logging
 from novel_generator.common import invoke_with_cleaning
 from llm_adapters import create_llm_adapter
-from prompt_definitions import chapter_blueprint_prompt, chunked_chapter_blueprint_prompt
+from prompt_definitions import chapter_blueprint_prompt, chunked_chapter_blueprint_prompt, part_based_chapter_blueprint_prompt
 from utils import read_file, clear_file_content, save_string_to_txt
+
+
+def parse_plot_parts(plot_text: str) -> list:
+    """
+    从plot.txt文件中解析出各个剧情部分
+    返回剧情部分列表，每个元素包含部分标题和内容
+    """
+    import re
+    
+    # 使用正则表达式匹配每个部分
+    pattern = r'第([一二三四五六七八九十]+)部分：([^\n]+)\n\n(.*?)(?=第[一二三四五六七八九十]+部分：|$)'
+    matches = re.findall(pattern, plot_text, re.DOTALL)
+    
+    parts = []
+    for match in matches:
+        part_number, part_title, part_content = match
+        parts.append({
+            'number': part_number,
+            'title': part_title.strip(),
+            'content': part_content.strip()
+        })
+    
+    return parts
+
+
+def get_recent_part_chapters(blueprint_text: str, chapters_per_part: int = 15) -> str:
+    """
+    从已有章节目录中提取最近一个部分的章节目录
+    按照章节数量倒推，获取最近生成的一个部分的章节
+    """
+    if not blueprint_text.strip():
+        return ""
+    
+    # 提取所有章节
+    pattern = r"(第\s*\d+\s*章.*?)(?=第\s*\d+\s*章|$)"
+    chapters = re.findall(pattern, blueprint_text, flags=re.DOTALL)
+    
+    if not chapters:
+        return ""
+    
+    # 获取最近的一个部分的章节（按chapters_per_part数量）
+    recent_chapters = chapters[-chapters_per_part:] if len(chapters) >= chapters_per_part else chapters
+    
+    return "\n\n".join(recent_chapters).strip()
+
+
+
+def get_plot_context_for_part(parts: list, part_index: int) -> str:
+    """
+    根据部分索引获取用于生成目录的剧情上下文
+    第一部分使用第1和第2部分，第二部分使用第1、2、3部分，依此类推
+    最后一部分使用倒数第二部分和最后一部分
+    """
+    if not parts:
+        return ""
+    
+    total_parts = len(parts)
+    
+    if part_index == 0:  # 第一部分
+        if total_parts >= 2:
+            context_parts = parts[0:2]  # 第1和第2部分
+        else:
+            context_parts = parts[0:1]  # 只有第1部分
+    elif part_index == total_parts - 1:  # 最后一部分
+        if total_parts >= 2:
+            context_parts = parts[-2:]  # 倒数第二部分和最后一部分
+        else:
+            context_parts = parts[-1:]  # 只有最后一部分
+    else:  # 中间部分
+        start_idx = max(0, part_index - 1)
+        end_idx = min(total_parts, part_index + 2)
+        context_parts = parts[start_idx:end_idx]
+    
+    # 构建上下文文本
+    context_text = ""
+    for part in context_parts:
+        context_text += f"第{part['number']}部分：{part['title']}\n\n{part['content']}\n\n"
+    
+    return context_text.strip()
+
 
 
 def limit_chapter_blueprint(blueprint_text: str, limit_chapters: int = 50) -> str:
@@ -173,3 +253,113 @@ def Chapter_blueprint_generate(
         current_start = current_end + 1
 
     logging.info("Novel_directory.txt 章节目录已经成功生成")
+
+
+def Chapter_blueprint_generate_by_parts(
+    interface_format: str,
+    api_key: str,
+    base_url: str,
+    llm_model: str,
+    filepath: str,
+    max_tokens: int,
+    min_chapters_per_part: int = 15,  # 每个部分至少生成的章节数（用于提取最近部分章节）
+    temperature: float = 0.7,
+    timeout: int = 300
+) -> None:
+    """
+    基于plot.txt中的剧情部分来依次生成章节目录
+    
+    生成规则：
+    - 使用第1和第2部分的剧情来创建第一部分的目录
+    - 使用第1、2、3部分来创建第二部分的目录
+    - 使用第2、3、4部分来创建第三部分的目录
+    - 依此类推
+    - 使用倒数第二部分和最后一部分来创建最后一部分的目录
+    
+    优化特性：
+    - 只提供最近一个部分已生成的章节目录
+    - 每个部分要求生成至少{min_chapters_per_part}章，不指定具体数量
+    - 在prompt中明确告知当前是根据第几部分生成目录
+    """
+    plot_file = os.path.join(filepath, "plot.txt")
+    if not os.path.exists(plot_file):
+        logging.warning("plot.txt not found. Please generate plot first.")
+        return
+
+    plot_text = read_file(plot_file).strip()
+    if not plot_text:
+        logging.warning("plot.txt is empty.")
+        return
+
+    # 解析剧情部分
+    plot_parts = parse_plot_parts(plot_text)
+    if not plot_parts:
+        logging.warning("No plot parts found in plot.txt")
+        return
+
+    logging.info(f"Found {len(plot_parts)} plot parts in plot.txt")
+    
+    llm_adapter = create_llm_adapter(
+        interface_format=interface_format,
+        base_url=base_url,
+        model_name=llm_model,
+        api_key=api_key,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        timeout=timeout
+    )
+
+    filename_dir = os.path.join(filepath, "Novel_directory.txt")
+    if not os.path.exists(filename_dir):
+        open(filename_dir, "w", encoding="utf-8").close()
+
+    existing_blueprint = read_file(filename_dir).strip()
+    final_blueprint = existing_blueprint
+    
+    # 为每个剧情部分生成章节
+    for part_index, part in enumerate(plot_parts):
+        logging.info(f"正在为第{part['number']}部分：{part['title']} 生成章节目录")
+        
+        # 获取这个部分的剧情上下文
+        plot_context = get_plot_context_for_part(plot_parts, part_index)
+        
+        # 获取最近一个部分的已生成章节（仅在非第一部分时）
+        recent_chapters = ""
+        if part_index > 0:  # 不是第一部分时，提供最近一部分的章节
+            recent_chapters = get_recent_part_chapters(final_blueprint, min_chapters_per_part)
+        
+        # 构建提示词
+        part_prompt = part_based_chapter_blueprint_prompt.format(
+            plot_context=plot_context,
+            current_part_title=part['title'],
+            current_part_number=part['number'],
+            min_chapters=min_chapters_per_part,
+            recent_chapters=recent_chapters if recent_chapters else "无"
+        )
+        
+        logging.info(f"正在生成第{part['number']}部分的章节目录（至少{min_chapters_per_part}章）")
+        
+        # 调用LLM生成这个部分的章节目录
+        part_result = invoke_with_cleaning(
+            llm_adapter, 
+            part_prompt, 
+            purpose=f"第{part['number']}部分章节目录生成"
+        )
+        
+        if not part_result.strip():
+            logging.warning(f"Part {part_index + 1} chapter generation result is empty.")
+            continue
+        
+        # 添加到总目录
+        if final_blueprint.strip():
+            final_blueprint += "\n\n" + part_result.strip()
+        else:
+            final_blueprint = part_result.strip()
+        
+        # 保存当前进度
+        clear_file_content(filename_dir)
+        save_string_to_txt(final_blueprint.strip(), filename_dir)
+        
+        logging.info(f"第{part['number']}部分章节目录生成完成")
+    
+    logging.info("基于剧情部分的章节目录生成完成")

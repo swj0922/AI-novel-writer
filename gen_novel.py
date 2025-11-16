@@ -9,6 +9,7 @@ import logging
 from novel_generator import (
     Novel_architecture_generate,
     Chapter_blueprint_generate,
+    Chapter_blueprint_generate_by_parts,
     generate_chapter_draft,
     finalize_chapter
 )
@@ -27,13 +28,13 @@ logging.basicConfig(
 
 # API配置
 #interface_format = "qwen"  
-#api_key = "sk-1ef165b563f646a482c2a0b589fa9b09" 
+#api_key = 
 #base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"  
 #model_name = "qwen3-235b-a22b-thinking-2507"  
 # max_tokens = 32768   # qwen3
 
 #interface_format = "doubao"
-#api_key = "141c1a18-56d4-4799-a975-44585266f86c"
+#api_key = 
 #base_url = "https://ark.cn-beijing.volces.com/api/v3"
 #model_name = "doubao-seed-1-6-flash-250715"
 # max_tokens = 32000  # doubao
@@ -55,9 +56,7 @@ async def main():
 
     # ==================== 配置参数 ====================
     interface_format = 'gemini'
-    # api_key ="AIzaSyD36taFUaT7sv0iKwzLyuFeqZiZPoQtSnA" # 自己的
-    # api_key = "AIzaSyBCaevYiLbu8kE5VdPYZA8w8mUCWX9zwZA"  # 购买1
-    api_key = "AIzaSyB-AwMVI5PYGihROiUME3DOz7_lkk0Tovw"  # 购买2
+    # api_key =
 
     base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
     model_name1 = "gemini-2.5-flash"   # 更新角色和总结角色
@@ -67,7 +66,7 @@ async def main():
     temperature1 = 0.7     # 小说架构和章节内容
     temperature2 = 0.1     # 章节目录、更新角色状态和总结角色状态
     temperature3 = 1.3     # 单独控制小说剧情
-    max_tokens = 65536            # gemini最大输出token
+    max_tokens = 65536     # gemini最大输出token
     timeout = 600
 
 
@@ -96,10 +95,9 @@ async def main():
     os.makedirs(filepath, exist_ok=True)
     
     try:
-        '''
         # 第一步：生成小说架构
         print("\n📋 第一步：生成小说架构...")
-        Novel_architecture_generate(
+        await Novel_architecture_generate(
             interface_format=interface_format,
             api_key=api_key,
             base_url=base_url,
@@ -133,14 +131,25 @@ async def main():
             timeout=timeout
         )
         print("✅ 章节蓝图生成完成！")
-        '''
+
+        print("\n📖 第二步：生成章节蓝图...")
+        Chapter_blueprint_generate_by_parts(
+            interface_format=interface_format,
+            api_key=api_key,
+            base_url=base_url,
+            llm_model=model_name2, 
+            filepath=filepath,
+            max_tokens=max_tokens,
+            min_chapters_per_part=15  # 每个剧情部分至少生成的章节数
+        )
+        print("✅ 章节蓝图生成完成！")
 
         # 第三步：逐章生成内容
         print("\n✍️ 第三步：开始生成章节内容...")
-        for chapter_num in range(31, number_of_chapters + 1):
+        for chapter_num in range(1, number_of_chapters + 1):
             print(f"\n--- 正在生成第 {chapter_num} 章 ---")
 
-            # 生成章节草稿
+            # 生成章节正文（先生成摘要，再基于摘要生成正文）
             draft_content = generate_chapter_draft(
                 api_key=api_key,
                 base_url=base_url,
@@ -157,7 +166,7 @@ async def main():
             )
             
             if draft_content:
-                print(f"✅ 第 {chapter_num} 章草稿生成完成！")
+                print(f"✅ 第 {chapter_num} 章正文生成完成！")
                 
                 # 定稿章节
                 print(f"🎯 正在定稿第 {chapter_num} 章...")
@@ -173,7 +182,7 @@ async def main():
                     timeout=timeout
                 )
                 print(f"✅ 第 {chapter_num} 章定稿完成！")
-                
+
                 # 每五章进行角色状态总结
                 if chapter_num % 10 == 0:
                     print(f"\n🔄 正在对前 {chapter_num} 章进行角色状态总结...")
@@ -191,26 +200,6 @@ async def main():
                         )
                         print(f"✅ 第 {chapter_num} 章角色状态总结完成！")
                         break
-                        '''
-                        # 保存global_summary备份文件
-                        print(f"📁 正在保存第 {chapter_num} 章global_summary备份...")
-                        try:
-                            global_summary_file = os.path.join(filepath, "global_summary.txt")
-                            if os.path.exists(global_summary_file):
-                                # 读取当前global_summary内容
-                                global_summary_content = read_file(global_summary_file)
-                                
-                                # 保存备份文件
-                                backup_filename = f"global_summary{chapter_num}.txt"
-                                backup_file_path = os.path.join(filepath, backup_filename)
-                                save_string_to_txt(global_summary_content, backup_file_path)
-                                print(f"✅ 已保存第{chapter_num}章global_summary备份文件: {backup_filename}")
-                            else:
-                                print(f"⚠️ global_summary.txt文件不存在，跳过备份")
-                        except Exception as backup_error:
-                            print(f"⚠️ global_summary备份失败：{str(backup_error)}")
-                            logging.error(f"global_summary备份错误：{str(backup_error)}", exc_info=True)
-                        '''
                     except Exception as e:
                         print(f"⚠️ 角色状态总结失败：{str(e)}")
                         logging.error(f"角色状态总结错误：{str(e)}", exc_info=True)

@@ -1,7 +1,6 @@
 # utils.py
 # -*- coding: utf-8 -*-
 import os
-import json
 
 def read_file(filename: str) -> str:
     """读取文件的全部内容，若文件不存在或异常则返回空字符串。"""
@@ -14,17 +13,6 @@ def read_file(filename: str) -> str:
     except Exception as e:
         print(f"[read_file] 读取文件时发生错误: {e}")
         return ""
-
-def append_text_to_file(text_to_append: str, file_path: str):
-    """在文件末尾追加文本(带换行)。若文本非空且无换行，则自动加换行。"""
-    if text_to_append and not text_to_append.startswith('\n'):
-        text_to_append = '\n' + text_to_append
-
-    try:
-        with open(file_path, 'a', encoding='utf-8') as file:
-            file.write(text_to_append)
-    except IOError as e:
-        print(f"[append_text_to_file] 发生错误：{e}")
 
 def clear_file_content(filename: str):
     """清空指定文件内容。"""
@@ -42,13 +30,4 @@ def save_string_to_txt(content: str, filename: str):
     except Exception as e:
         print(f"[save_string_to_txt] 保存文件时发生错误: {e}")
 
-def save_data_to_json(data: dict, file_path: str) -> bool:
-    """将数据保存到 JSON 文件。"""
-    try:
-        with open(file_path, 'w', encoding='utf-8') as json_file:
-            json.dump(data, json_file, ensure_ascii=False, indent=4)
-        return True
-    except Exception as e:
-        print(f"[save_data_to_json] 保存数据到JSON文件时出错: {e}")
-        return False
 

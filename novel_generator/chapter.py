@@ -17,7 +17,75 @@ from utils import read_file, clear_file_content, save_string_to_txt
 import re
 
 
+def get_last_n_chapters_summaries(filepath: str, current_chapter_num: int, n: int = 10) -> str:
+    """
+    从summary_result文件夹中获取最近n章的章节摘要。
+    
+    Args:
+        filepath: Novel_Output目录路径
+        current_chapter_num: 当前正在创作的章节数
+        n: 想要获取的章节摘要数量
+        
+    Returns:
+        合并后的章节摘要字符串
+        
+    Example:
+        如果current_chapter_num=20, n=10
+        则获取第10到第19章的章节摘要
+    """
+    try:
+        summary_result_dir = os.path.join(filepath, "summary_result")
+        if not os.path.exists(summary_result_dir):
+            logging.warning(f"章节摘要文件夹不存在: {summary_result_dir}")
+            return ""
+        
+        # 计算要获取的章节范围
+        start_chapter = max(1, current_chapter_num - n)
+        end_chapter = current_chapter_num - 1  # 不包括当前章节
+        
+        if start_chapter > end_chapter:
+            logging.warning(f"无有效章节摘要可获取: start={start_chapter}, end={end_chapter}")
+            return ""
+        
+        summaries = []
+        
+        for chapter_num in range(start_chapter, end_chapter + 1):
+            summary_file = os.path.join(summary_result_dir, f"chapter_{chapter_num}_summary.txt")
+            if os.path.exists(summary_file):
+                summary_content = read_file(summary_file).strip()
+                if summary_content:
+                    summaries.append(f"第{chapter_num}章摘要：{summary_content}")
+                else:
+                    logging.warning(f"第{chapter_num}章摘要文件为空: {summary_file}")
+            else:
+                logging.warning(f"第{chapter_num}章摘要文件不存在: {summary_file}")
+        
+        if not summaries:
+            logging.warning(f"未找到第{start_chapter}到第{end_chapter}章的摘要文件")
+            return ""
+        
+        result = "\n\n".join(summaries)
+        logging.info(f"成功获取第{start_chapter}到第{end_chapter}章的摘要，共{len(summaries)}章")
+        
+        return result
+        
+    except Exception as e:
+        logging.error(f"获取章节摘要时发生错误: {str(e)}")
+        return ""
 def get_last_n_chapters_text(chapters_dir: str, current_chapter_num: int, n: int = 1) -> list:
+    """
+    从目录 chapters_dir 中获取最近 n 章的文本内容，返回文本列表。
+    """
+    texts = []
+    start_chap = max(1, current_chapter_num - n)
+    for c in range(start_chap, current_chapter_num):
+        chap_file = os.path.join(chapters_dir, f"chapter_{c}.txt")
+        if os.path.exists(chap_file):
+            text = read_file(chap_file).strip()
+            texts.append(text)
+        else:
+            texts.append("")
+    return texts
     """
     从目录 chapters_dir 中获取最近 n 章的文本内容，返回文本列表。
     """
@@ -121,10 +189,12 @@ def summarize_recent_chapters(
     novel_number: int,            # 当前正在处理的章节编号    
     chapter_info: dict,           # 当前章节信息
     next_chapter_info: dict,      # 下一章信息
+    filepath: str = './Novel_Output',  # Novel_Output目录路径
+    summary_count: int = 9,      # 要获取的章节摘要数量
     timeout: int = 600
 ) -> str:  
     """
-    根据前一章内容生成当前章节的摘要。
+    根据前一章内容和最近n章的章节摘要生成当前章节的摘要。
     如果解析失败，则返回空字符串。
     """
     try:    
@@ -133,7 +203,12 @@ def summarize_recent_chapters(
         if not combined_text:
             return ""
         
-        recent_dir = extract_chapters_directory(filepath='./Novel_Output', current_chapter_num=novel_number, extract_count=10)
+        # 获取最近n章的章节摘要
+        # novel_number-1是因为前一章会提供完整文本，不需要摘要
+        recent_summaries = get_last_n_chapters_summaries(filepath, novel_number-1, summary_count)
+        
+        # 最近十章章节目录
+        # recent_dir = extract_chapters_directory(filepath=filepath, current_chapter_num=novel_number, extract_count=10)
 
         llm_adapter = create_llm_adapter(
             interface_format=interface_format,
@@ -151,8 +226,10 @@ def summarize_recent_chapters(
         
         prompt = summarize_recent_chapters_prompt.format(
             combined_text=combined_text,  # 最近一章完整内容
-            recent_dir=recent_dir,        # 最近十章章节信息
+#            recent_dir=recent_dir,        # 最近十章章节信息
+            recent_summaries=recent_summaries,  # 最近n章的章节摘要
             novel_number=novel_number,
+            last_chapter_number=novel_number - 1,
             chapter_title=chapter_info.get("chapter_title", "未命名"),
             chapter_role=chapter_info.get("chapter_role", "常规章节"),
             chapter_purpose=chapter_info.get("chapter_purpose", "内容推进"),
@@ -166,7 +243,7 @@ def summarize_recent_chapters(
             next_chapter_suspense_level=next_chapter_info.get("suspense_level", "中等"),
         )
         
-        response_text = invoke_with_cleaning(llm_adapter, prompt, purpose="生成章节摘要")
+        response_text = invoke_with_cleaning(llm_adapter, prompt, purpose=f"生成第{novel_number}章摘要")
         summary = extract_summary_from_response(response_text)
         
         if not summary:
@@ -235,19 +312,13 @@ def build_chapter_prompt(
     timeout: int
 ) -> str:
     """
-    构造当前章节的请求提示词（完整实现版）
-    修改重点：
-    1. 优化知识库检索流程
-    2. 新增内容重复检测机制
-    3. 集成提示词应用规则
+    构造当前章节的请求提示词
     """
     # 读取基础文件
     arch_file = os.path.join(filepath, "Novel_architecture.txt")
     novel_architecture_text = read_file(arch_file)
     directory_file = os.path.join(filepath, "Novel_directory.txt")
     blueprint_text = read_file(directory_file)
-    #global_summary_file = os.path.join(filepath, "global_summary.txt")
-    #global_summary_text = read_file(global_summary_file)
     character_state_file = os.path.join(filepath, "character_state.txt")
     character_state_text = read_file(character_state_file)
     
@@ -313,6 +384,8 @@ def build_chapter_prompt(
             novel_number=novel_number,
             chapter_info=chapter_info,
             next_chapter_info=next_chapter_info,
+            filepath=filepath,
+            summary_count=9,  # 获取最近9章的摘要
             timeout=timeout
         )
         logging.info("当前章节摘要成功生成")
@@ -320,38 +393,9 @@ def build_chapter_prompt(
         logging.error(f"Error in summarize_recent_chapters: {str(e)}")
         short_summary = "（摘要生成失败）"
 
+    # 前一章正文
     previous_excerpt = recent_texts[0]
-    # 获取前一章结尾，使用标点符号进行智能截取
-    '''
-    previous_excerpt = ""
-    for text in reversed(recent_texts):
-        if text.strip():
-            # 定义可以作为截取点的标点符号
-            end_punctuations = ['。', '！', '？', '”', '’', '!', '?', '.', '"', "'"]
-            
-            # 如果文本长度小于等于400字符，直接使用全部内容
-            if len(text) <= 400:
-                previous_excerpt = text
-            else:
-                # 从最后400字符开始向前查找合适的标点符号截取点
-                start_pos = len(text) - 400
-                best_cut_pos = start_pos
-                
-                # 在这400字符范围内查找最早的标点符号
-                for i in range(start_pos, len(text)):
-                    if text[i] in end_punctuations:
-                        best_cut_pos = i + 1  # 在标点符号后面截取
-                        break
-                
-                # 如果找到了合适的标点符号，从该位置开始截取
-                previous_excerpt = text[best_cut_pos:]
-                
-                # 如果截取后内容太短（少于100字符），则使用原来的截取方法
-                if len(previous_excerpt.strip()) < 100:
-                    previous_excerpt = text[-400:]
-            
-            break
-        '''
+
     # 返回最终提示词
     return next_chapter_draft_prompt.format(
         previous_chapter_excerpt=previous_excerpt,
@@ -374,29 +418,7 @@ def build_chapter_prompt(
         next_chapter_summary=next_chapter_summary,
         genre=genre,
     )
-    '''
-    return next_chapter_draft_prompt.format(
-        user_guidance=user_guidance if user_guidance else "无特殊指导",
-        global_summary=global_summary_text,
-        previous_chapter_excerpt=previous_excerpt,
-        character_state=character_state_text,
-        short_summary=short_summary,
-        novel_number=novel_number,
-        chapter_title=chapter_title,
-        chapter_role=chapter_role,
-        chapter_purpose=chapter_purpose,
-        suspense_level=suspense_level,
-        chapter_summary=chapter_summary,
-        word_number=word_number,
-        next_chapter_number=next_chapter_number,
-        next_chapter_title=next_chapter_title,
-        next_chapter_role=next_chapter_role,
-        next_chapter_purpose=next_chapter_purpose,
-        next_chapter_suspense_level=next_chapter_suspense,
-        next_chapter_summary=next_chapter_summary,
-        genre=genre,
-    )
-    '''
+
 
 def generate_chapter_draft(
     api_key: str,
@@ -444,7 +466,7 @@ def generate_chapter_draft(
         timeout=timeout
     )
 
-    chapter_content = invoke_with_cleaning(llm_adapter, prompt_text, purpose="生成章节正文")
+    chapter_content = invoke_with_cleaning(llm_adapter, prompt_text, purpose=f"生成第{novel_number}章正文")
     if not chapter_content.strip():
         logging.warning("Generated chapter draft is empty.")
     chapter_file = os.path.join(chapters_dir, f"chapter_{novel_number}.txt")
