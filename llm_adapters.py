@@ -310,27 +310,27 @@ def create_llm_adapter(
 llm_gemini_flash = create_llm_adapter(interface_format="gemini",
                                       base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
                                       model_name="gemini-2.5-flash",
-                                      api_key="AIzaSyD36taFUaT7sv0iKwzLyuFeqZiZPoQtSnA",
+                                      #api_key=,
                                       max_tokens=65536,
                                       )
 
 llm_gemini_pro = create_llm_adapter(interface_format="gemini",
                                       base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
                                       model_name="gemini-2.5-pro",
-                                      api_key="AIzaSyD36taFUaT7sv0iKwzLyuFeqZiZPoQtSnA",
+                                      #api_key=,
                                       max_tokens=65536,
                                       )
 
 llm_qwen_plus = create_llm_adapter(interface_format="qwen",
                                       base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
                                       model_name="qwen-plus",
-                                      api_key="sk-1ef165b563f646a482c2a0b589fa9b09",
+                                      #api_key=,
                                       max_tokens=32768
                                       )
 
 llm_doubao = create_llm_adapter(interface_format="doubao",
                                       base_url="https://ark.cn-beijing.volces.com/api/v3",
                                       model_name="doubao-seed-1-6-250615",
-                                      api_key="141c1a18-56d4-4799-a975-44585266f86c",
+                                      #api_key=,
                                       max_tokens=32000
                                       )

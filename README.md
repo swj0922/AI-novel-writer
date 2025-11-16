@@ -1,3 +1,5 @@
+在gen_novel.py中，输入api_key即可生成小说
+
 architecture.py
 利用大模型根据以下prompt，生成对应结果
       1. core_seed_prompt
